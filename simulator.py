@@ -116,7 +116,7 @@ def check_uncertainty_distribution(element):
 def check_reward(element):
     global reward
     if "R" in element:
-        digits = re.findall(r"[-+]+\d*\.\d+|\d+",element)
+        digits = re.findall(r"[-+]+\d*\.\d+|[-+]\d+",element)
         reward = digits[0]
 
 
@@ -172,7 +172,7 @@ def check_forbidden(element):
 
 
 def read_file(input_arguments):
-    with open("MDPRL_world0.data","r") as world:
+    with open("MDPRL_world1.data","r") as world:
         values = world.readlines()
         for i in range(len(values)):
             print(values[i])
