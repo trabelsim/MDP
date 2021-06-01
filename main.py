@@ -25,8 +25,9 @@
 # md1 = mdptoolbox.mdp.
 
 
-import simulator, sys
+import simulator, sys, mdptoolbox, agent
 input_arguments = sys.argv
 
 simulator.read_file(input_arguments)
 simulator.print_values()
+simulator.start_value_iteration()
