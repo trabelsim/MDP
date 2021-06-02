@@ -21,18 +21,89 @@ forbidden_index = 0
 r_rewards = 0
 v = 0
 v_next = 0
+actions = [1,1,1,1]
+
+iterations = 0
+
+#Used for updating the value with Ballman equation
+def update(row,col):
+    global actions, v, v_next
+    intended_prob = uncertainty_distribution[0]
+    left_miss_prob = uncertainty_distribution[1]
+    right_miss_prob = uncertainty_distribution[2]
+    back_prob = uncertainty_distribution[3]
+
+
+    for term_state in terminal_states:
+        term_state_x = terminal_states[term_state][0]-1
+        term_state_y = terminal_states[term_state][1]-1
+        if ( row == term_state_y and col == term_state_x):
+            v_next[row][col] = r_rewards[row][col]
+            # print(f"terminal state in {term_state_y},{term_state_x}")
+            return
+
+    for forb_state in forbidden_states:
+        forbidden_x = forbidden_states[forb_state][0] - 1
+        forbidden_y = forbidden_states[forb_state][1] - 1
+        if ( row == forbidden_y and col == forbidden_x):
+            v_next[row][col] = r_rewards[row][col]
+            # print(f"forbidden state in {forbidden_y},{forbidden_x}")
+            return
+    # P(s' | s,a) * V(s')
+    actions[0] = intended_prob * go_up(row,col) + left_miss_prob * go_left(row,col) + right_miss_prob * go_right(row,col)
+    actions[1] = intended_prob * go_down(row,col) + left_miss_prob * go_left(row,col) + right_miss_prob * go_right(row,col)
+    actions[2] = intended_prob * go_left(row,col) + left_miss_prob * go_down(row,col) + right_miss_prob * go_up(row,col)
+    actions[3] = intended_prob * go_right(row,col) + left_miss_prob * go_up(row,col) + right_miss_prob * go_down(row,col)
+
+    best_action = find_max_action(actions)
+    v_next[row][col] = r_rewards[row][col] + float(gamma)*actions[best_action]
+
+
+
+
+def value_iteration( ):
+    global v, v_next
+    delta = 0
+    n_iter = 0
+    v = np.ones(shape=(rows, columns))
+    v_next = np.ones(shape=(rows, columns))
+    checking = True
+    while checking:
+        v_next = v
+        n_iter+=1
+        for row in range(rows):
+            # print(f"Row: {row}")
+            for col in range(columns):
+                # print(f"Column: {col}")
+                update(row,col)
+                error_diff = np.abs(v_next[row][col] - v[row][col])
+                if(error_diff > delta):
+                    delta = error_diff
+                # print(f"Delta: {delta}, Error diff: {error_diff}, iteration: {n_iter}")
+        if not( n_iter < iterations):
+            checking=False
+    print(v[::-1])
+
+
+
+def find_max_action(actions):
+    max_index = 0
+    for index in range(len(actions)):
+        if actions[index] > actions[max_index]:
+            max_index = index
+    return max_index
+
 
 def go_up(y,x):
     global v
-    print("going up")
     # Y are the rows
     # X are the columns
     for key in forbidden_states:
         forbidden_x = forbidden_states[key][0]-1
         forbidden_y = forbidden_states[key][1]-1
         #In case we are in the last row OR there is a forbidden state in the up slot
-        if y == rows or ( x == forbidden_x and y == forbidden_y - 1 ):
-            print(f"FORBIDDEN State in (row={forbidden_y}, col={forbidden_x})!")
+        if y == rows-1 or ( x == forbidden_x and y == forbidden_y - 1 ):
+            # print(f"FORBIDDEN State in (row={forbidden_y}, col={forbidden_x})!")
             return v[y][x]
     #Otherwise go up
     return v[y+1][x]
@@ -40,7 +111,6 @@ def go_up(y,x):
 
 def go_down(y,x):
     global v
-    print("going down")
     for key in forbidden_states:
         forbidden_x = forbidden_states[key][0]-1
         forbidden_y = forbidden_states[key][1]-1
@@ -54,7 +124,6 @@ def go_down(y,x):
 
 def go_left(y,x):
     global v
-    print("going left")
     for key in forbidden_states:
         forbidden_x = forbidden_states[key][0]-1
         forbidden_y = forbidden_states[key][1]-1
@@ -67,12 +136,11 @@ def go_left(y,x):
 
 def go_right(y,x):
     global v
-    print("going right")
     for key in forbidden_states:
         forbidden_x = forbidden_states[key][0]-1
         forbidden_y = forbidden_states[key][1]-1
         #In case we are in the last column OR there is a forbidden state in the right slot
-        if x == columns or  ( x == forbidden_x - 1 and y == forbidden_y ):
+        if x == columns-1 or  ( x == forbidden_x - 1 and y == forbidden_y ):
             return v[y][x]
     #Otherwise go right
     return v[y][x+1]
@@ -104,7 +172,7 @@ def initialize_rewards():
 #    print(r_rewards)
     #TODO Remember to flip in the end only for representation!
 #    r_rewards = np.flipud(r_rewards)
-    print(r_rewards)
+#     print(r_rewards)
 
 
 
@@ -215,6 +283,7 @@ def check_forbidden(element):
 
 
 def read_file(input_arguments):
+    global iterations
     with open("MDPRL_world0.data","r") as world:
         values = world.readlines()
         for i in range(len(values)):
@@ -228,6 +297,7 @@ def read_file(input_arguments):
             check_terminal(values[i])
             check_special(values[i])
             check_forbidden(values[i])
+            iterations = 10000
 
 
 def print_values():
