@@ -4,6 +4,8 @@ import numpy as np
 
 total_size_world = 0
 world_size = []
+rows = 0
+columns = 0
 start_state = []
 uncertainty_distribution = []
 reward = 0
@@ -17,19 +19,77 @@ forbidden_states = {}
 forbidden_index = 0
 
 r_rewards = 0
+v = 0
+v_next = 0
+
+def go_up(y,x):
+    global v
+    print("going up")
+    # Y are the rows
+    # X are the columns
+    for key in forbidden_states:
+        forbidden_x = forbidden_states[key][0]-1
+        forbidden_y = forbidden_states[key][1]-1
+        #In case we are in the last row OR there is a forbidden state in the up slot
+        if y == rows or ( x == forbidden_x and y == forbidden_y - 1 ):
+            print(f"FORBIDDEN State in (row={forbidden_y}, col={forbidden_x})!")
+            return v[y][x]
+    #Otherwise go up
+    return v[y+1][x]
+
+
+def go_down(y,x):
+    global v
+    print("going down")
+    for key in forbidden_states:
+        forbidden_x = forbidden_states[key][0]-1
+        forbidden_y = forbidden_states[key][1]-1
+        #In case we are in the first row OR there is a forbidden state in the down slot
+        if y == 0 or  ( x == forbidden_x and y == forbidden_y + 1 ):
+            return v[y][x]
+    #Otherwise go down
+    return v[y-1][x]
+
+
+
+def go_left(y,x):
+    global v
+    print("going left")
+    for key in forbidden_states:
+        forbidden_x = forbidden_states[key][0]-1
+        forbidden_y = forbidden_states[key][1]-1
+        #In case we are in the first column OR there is a forbidden state in the left slot
+        if x == 0 or  ( x == forbidden_x + 1 and y == forbidden_y ):
+            return v[y][x]
+    #Otherwise go left
+    return v[y][x-1]
+
+
+def go_right(y,x):
+    global v
+    print("going right")
+    for key in forbidden_states:
+        forbidden_x = forbidden_states[key][0]-1
+        forbidden_y = forbidden_states[key][1]-1
+        #In case we are in the last column OR there is a forbidden state in the right slot
+        if x == columns or  ( x == forbidden_x - 1 and y == forbidden_y ):
+            return v[y][x]
+    #Otherwise go right
+    return v[y][x+1]
+
 
 
 def initialize_rewards():
-    global r_rewards, reward
+    global r_rewards, reward, rows, columns
     #Apply global reward for all the states
     # R_REWARDS [ Y ] [ X ]
-    r_rewards = np.ones(shape=(world_size[1], world_size[0]))
-    print(r_rewards)
-    for y in range(world_size[1]):
-        for x in range(world_size[0]):
+    rows = world_size[1]
+    columns = world_size[0]
+    r_rewards = np.ones(shape=(rows, columns))
+    for y in range(rows):
+        for x in range(columns):
             r_rewards[y][x] = reward
     #Apply reward only for terminal states from the terminal states dict.
-    print(terminal_states)
     for key in terminal_states:
         r_rewards[terminal_states[key][1]-1][terminal_states[key][0]-1] = terminal_states[key][2]
 
@@ -41,34 +101,17 @@ def initialize_rewards():
     for key in forbidden_states:
         r_rewards[forbidden_states[key][1]-1][forbidden_states[key][0]-1] = 0
 
+#    print(r_rewards)
+    #TODO Remember to flip in the end only for representation!
+#    r_rewards = np.flipud(r_rewards)
+    print(r_rewards)
 
 
 
 def start_value_iteration():
     global world_size , r_rewards
-    v = [[0] * world_size[0]] * world_size[1]  # actual v status
-    v_next = [[0] * world_size[0]] * world_size[1]  # next v status
-    pi_policy = [[0] * world_size[0]] * world_size[1]
-    delta = 0 #checking v - v_next
-    iteration = 0
     initialize_rewards()
-    print(r_rewards)
-    print("-----------")
-    print(r_rewards[::-1])
 
-#
-# def create_P_matrix():
-#     global world_size, total_size_world
-#     total_size_world = world_size[0] * world_size[1]
-#     print(total_size_world)
-#     matrix_P = np.zeros(shape=(len(uncertainty_distribution), total_size_world, total_size_world))
-#     # for action in range(len(matrix_P)):
-#     #     for state in range(len(matrix_P[1])):
-#             # print(matrix_P[state])
-#     matrix_R = np.empty((world_size[0],world_size[1]))
-#     matrix_R.fill(reward)
-#     A = mdptoolbox.mdp.ValueIteration(matrix_P[0],matrix_R,1)
-#     print(A)
 
 def check_world_input(element):
     global world_size
@@ -172,7 +215,7 @@ def check_forbidden(element):
 
 
 def read_file(input_arguments):
-    with open("MDPRL_world1.data","r") as world:
+    with open("MDPRL_world0.data","r") as world:
         values = world.readlines()
         for i in range(len(values)):
             print(values[i])
