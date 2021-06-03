@@ -1,6 +1,8 @@
 import random
-import sys, re , mdptoolbox
+import sys, re
 import numpy as np
+import matplotlib as mpl
+from matplotlib import pyplot as plt
 
 total_size_world = 0
 world_size = []
@@ -24,6 +26,33 @@ v_next = 0
 actions = [1,1,1,1]
 
 iterations = 0
+plotting_dict = {}
+
+def plot():
+    t = list(range(iterations))
+    y = plotting_dict['0_1']
+    fig, ax = plt.subplots()
+    for state in plotting_dict:
+        ax.plot(t, plotting_dict[state])
+    print(t)
+    print(y)
+    plt.show()
+
+
+def initialize_plotting_dict():
+    global plotting_dict
+    for i in range(rows):
+        for j in range(columns):
+            key = f"{i}_{j}"
+            plotting_dict[key] = []
+
+
+def add_values_for_plotting(row,col):
+    global plotting_dict
+    key = f"{row}_{col}"
+    plotting_dict[key].append(v_next[row,col])
+
+
 
 #Used for updating the value with Ballman equation
 def update(row,col):
@@ -40,7 +69,7 @@ def update(row,col):
         if ( row == term_state_y and col == term_state_x):
             v_next[row][col] = r_rewards[row][col]
             # print(f"terminal state in {term_state_y},{term_state_x}")
-            return
+            return v_next
 
     for forb_state in forbidden_states:
         forbidden_x = forbidden_states[forb_state][0] - 1
@@ -48,7 +77,7 @@ def update(row,col):
         if ( row == forbidden_y and col == forbidden_x):
             v_next[row][col] = r_rewards[row][col]
             # print(f"forbidden state in {forbidden_y},{forbidden_x}")
-            return
+            return v_next
     # P(s' | s,a) * V(s')
     actions[0] = intended_prob * go_up(row,col) + left_miss_prob * go_left(row,col) + right_miss_prob * go_right(row,col)
     actions[1] = intended_prob * go_down(row,col) + left_miss_prob * go_left(row,col) + right_miss_prob * go_right(row,col)
@@ -57,34 +86,39 @@ def update(row,col):
 
     best_action = find_max_action(actions)
     v_next[row][col] = r_rewards[row][col] + float(gamma)*actions[best_action]
-
+    return v_next
 
 
 
 def value_iteration( ):
     global v, v_next
+    initialize_plotting_dict()
     delta = 0
     n_iter = 0
-    v = np.ones(shape=(rows, columns))
-    v_next = np.ones(shape=(rows, columns))
+    counter=0
+    v = np.zeros(shape=(rows, columns))
+    v_next = np.zeros(shape=(rows, columns))
     checking = True
+    v_next = v
     while checking:
-        v_next = v
         n_iter+=1
         for row in range(rows):
             # print(f"Row: {row}")
             for col in range(columns):
                 # print(f"Column: {col}")
-                update(row,col)
-                error_diff = np.abs(v_next[row][col] - v[row][col])
+                v_next = update(row,col)
+                print(f"V VALUE: {v[row][col]}")
+                print(f"V_NEXT VALUE: {v_next[row][col]}")
+                add_values_for_plotting(row,col)
+                error_diff = abs(v_next[row][col] - v[row][col])
                 if(error_diff > delta):
                     delta = error_diff
-                # print(f"Delta: {delta}, Error diff: {error_diff}, iteration: {n_iter}")
+                    print(f"ERROR: {delta}")
         if not( n_iter < iterations):
             checking=False
     print(v[::-1])
-
-
+    print(plotting_dict)
+    plot()
 
 def find_max_action(actions):
     max_index = 0
@@ -297,7 +331,7 @@ def read_file(input_arguments):
             check_terminal(values[i])
             check_special(values[i])
             check_forbidden(values[i])
-            iterations = 10000
+            iterations = 30
 
 
 def print_values():
