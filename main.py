@@ -23,12 +23,26 @@
 # print(vi.policy)
 #
 # md1 = mdptoolbox.mdp.
-import numpy as np
 
-import simulator, sys, mdptoolbox, agent
+import sys
+import simulator
+
 input_arguments = sys.argv
+filenamex=input_arguments[1]
+print(f"Loaded world: {filenamex}")
 
-simulator.read_file(input_arguments)
-simulator.print_values()
+if(len(input_arguments) == 2 and 'data' in input_arguments[1]):
+    simulator.read_file(input_arguments, filename=filenamex)
+if(len(input_arguments) == 3):
+    gammaxx = float(input_arguments[2])
+    simulator.read_file(input_arguments, filename=filenamex,gammax=gammaxx)
+if(len(input_arguments) == 4):
+    gammaxx = float(input_arguments[2])
+    explorexx = float(input_arguments[3])
+    simulator.read_file(input_arguments,filename=filenamex,gammax=gammaxx,explorex=explorexx)
+if len(input_arguments) == 1:
+    sys.exit("No data world provided. Exiting.")
+
 simulator.start_value_iteration()
 simulator.value_iteration()
+simulator.show_results()

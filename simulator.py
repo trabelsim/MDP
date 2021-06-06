@@ -11,8 +11,8 @@ columns = 0
 start_state = []
 uncertainty_distribution = []
 reward = 0
-gamma = 0
-explore = 0
+gamma = -1
+explore = -1
 terminal_states = {}
 terminal_index = 0
 special_states = {}
@@ -23,19 +23,39 @@ forbidden_index = 0
 r_rewards = 0
 v = 0
 v_next = 0
+pi = 0
 actions = [1,1,1,1]
 
 iterations = 0
 plotting_dict = {}
 
+def show_results():
+    v_output = v[::-1]
+    print("\nUtility distribution: ")
+    for v_row in v_output:
+        for v_col in v_row:
+            v_col_out = "{:.4f}".format(v_col)
+            print(f"| {v_col_out} ", end=" ")
+        print("\n")
+    print("Optimal policy")
+    pi_output = pi[::-1]
+    for pi_row in pi_output:
+        for pi_col in pi_row:
+            print(f"| {pi_col.decode('UTF-8')} ", end=" ")
+        print("\n")
+
+    plot()
+
+
 def plot():
     t = list(range(iterations))
-    y = plotting_dict['0_1']
     fig, ax = plt.subplots()
     for state in plotting_dict:
         ax.plot(t, plotting_dict[state])
-    print(t)
-    print(y)
+    plt.legend(plotting_dict)
+    ax.set(xlabel='Number of iterations', ylabel="Utility estimates",
+           title="Convergence of value iteration")
+    ax.grid()
     plt.show()
 
 
@@ -56,7 +76,7 @@ def add_values_for_plotting(row,col):
 
 #Used for updating the value with Ballman equation
 def update(row,col):
-    global actions, v, v_next
+    global actions, v, v_next , pi
     intended_prob = uncertainty_distribution[0]
     left_miss_prob = uncertainty_distribution[1]
     right_miss_prob = uncertainty_distribution[2]
@@ -69,6 +89,7 @@ def update(row,col):
         if ( row == term_state_y and col == term_state_x):
             v_next[row][col] = r_rewards[row][col]
             # print(f"terminal state in {term_state_y},{term_state_x}")
+            pi[row][col] = "T"
             return v_next
 
     for forb_state in forbidden_states:
@@ -76,6 +97,7 @@ def update(row,col):
         forbidden_y = forbidden_states[forb_state][1] - 1
         if ( row == forbidden_y and col == forbidden_x):
             v_next[row][col] = r_rewards[row][col]
+            pi[row][col] = 'F'
             # print(f"forbidden state in {forbidden_y},{forbidden_x}")
             return v_next
     # P(s' | s,a) * V(s')
@@ -86,18 +108,29 @@ def update(row,col):
 
     best_action = find_max_action(actions)
     v_next[row][col] = r_rewards[row][col] + float(gamma)*actions[best_action]
+
+    if best_action == 0:
+        pi[row][col] = '^'
+    if best_action == 1:
+        pi[row][col] = 'v'
+    if best_action == 2:
+        pi[row][col] = '<'
+    if best_action == 3:
+        pi[row][col] = '>'
+
     return v_next
 
 
 
 def value_iteration( ):
-    global v, v_next
+    global v, v_next , pi
     initialize_plotting_dict()
     delta = 0
     n_iter = 0
     counter=0
     v = np.zeros(shape=(rows, columns))
     v_next = np.zeros(shape=(rows, columns))
+    pi = np.chararray(shape=(rows, columns))
     checking = True
     v_next = v
     while checking:
@@ -107,18 +140,12 @@ def value_iteration( ):
             for col in range(columns):
                 # print(f"Column: {col}")
                 v_next = update(row,col)
-                print(f"V VALUE: {v[row][col]}")
-                print(f"V_NEXT VALUE: {v_next[row][col]}")
                 add_values_for_plotting(row,col)
                 error_diff = abs(v_next[row][col] - v[row][col])
                 if(error_diff > delta):
                     delta = error_diff
-                    print(f"ERROR: {delta}")
         if not( n_iter < iterations):
             checking=False
-    print(v[::-1])
-    print(plotting_dict)
-    plot()
 
 def find_max_action(actions):
     max_index = 0
@@ -268,23 +295,27 @@ def check_reward(element):
 
 def check_gamma(element, input_arguments):
     global gamma
-    if "G" in element:
-        digits = re.findall(r"[-+]?\d*\.\d+|\d+",element)
-        gamma = digits[0]
+    if len(input_arguments) ==  3:
+        gamma = float(input_arguments[2])
     else:
-        if len(input_arguments) > 1:
-            gamma = input_arguments[1]
+        if "G" in element:
+            digits = re.findall(r"[-+]?\d*\.\d+|\d+",element)
+            gamma = digits[0]
+        else:
+            pass
 
 
 
 def check_explore(element, input_arguments):
     global explore
-    if "E" in element:
-        digits = re.findall(r"[-+]?\d*\.\d+|\d+",element)
-        explore = digits[0]
+    if len(input_arguments) == 4:
+        explore = float(input_arguments[3])
     else:
-        if len(input_arguments) > 2:
-            explore = input_arguments[2]
+        if "E" in element:
+            digits = re.findall(r"[-+]?\d*\.\d+|\d+",element)
+            explore = digits[0]
+        else:
+            pass
 
 
 def check_terminal(element):
@@ -316,12 +347,12 @@ def check_forbidden(element):
         forbidden_index+=1
 
 
-def read_file(input_arguments):
+def read_file(input_arguments,filename="MDPRL_world0.data",iter=30,gammax=-1,explorex=-1):
     global iterations
-    with open("MDPRL_world0.data","r") as world:
+    with open(filename,"r") as world:
         values = world.readlines()
         for i in range(len(values)):
-            print(values[i])
+            # print(values[i])
             check_world_input(values[i])
             check_start_state(values[i])
             check_uncertainty_distribution(values[i])
@@ -331,7 +362,11 @@ def read_file(input_arguments):
             check_terminal(values[i])
             check_special(values[i])
             check_forbidden(values[i])
-            iterations = 30
+            iterations = iter
+    if gamma == -1:
+        sys.exit("No gamma value provided. exiting.")
+    if explore == -1:
+        sys.exit("No explore value provided. Exiting")
 
 
 def print_values():
